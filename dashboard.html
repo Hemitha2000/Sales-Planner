@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>₹1 Crore Sales Calculator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #fff;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+      color: #f0c040;
+    }
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+
+    /* Input row */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .control-box {
+      background: #1a1a2e;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 14px 20px;
+      text-align: center;
+      min-width: 160px;
+    }
+    .control-box label {
+      display: block;
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .control-box input {
+      width: 100%;
+      background: #0f0f1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #f0c040;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 6px 8px;
+      outline: none;
+    }
+    .control-box input:focus { border-color: #f0c040; }
+
+    /* Highlight cards */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 1px solid #f0c04044;
+      border-radius: 14px;
+      padding: 16px 22px;
+      text-align: center;
+      min-width: 150px;
+    }
+    .card .val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f0c040;
+    }
+    .card .lbl {
+      font-size: 0.72rem;
+      color: #aaa;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Chart */
+    .chart-wrap {
+      background: #1a1a2e;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+    .chart-wrap h2 {
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* Table */
+    .table-wrap {
+      background: #1a1a2e;
+      border-radius: 16px;
+      padding: 20px;
+      overflow-x: auto;
+    }
+    .table-wrap h2 {
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th {
+      background: #f0c04022;
+      color: #f0c040;
+      padding: 10px 12px;
+      text-align: center;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 10px 12px;
+      text-align: center;
+      border-bottom: 1px solid #ffffff11;
+      color: #ddd;
+    }
+    tr.highlight td {
+      background: #f0c04018;
+      color: #f0c040;
+      font-weight: 700;
+    }
+    tr:hover td { background: #ffffff08; }
+
+    .badge {
+      display: inline-block;
+      background: #f0c040;
+      color: #000;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 2px 6px;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎯 ₹1 Crore Sales Planner</h1>
+<p class="subtitle">Adjust your product price & margin to see what it takes</p>
+
+<div class="controls">
+  <div class="control-box">
+    <label>Product Price (₹)</label>
+    <input type="number" id="price" value="500" min="1" />
+  </div>
+  <div class="control-box">
+    <label>Your Margin (%)</label>
+    <input type="number" id="margin" value="30" min="1" max="100" />
+  </div>
+  <div class="control-box">
+    <label>Target (₹ Crore)</label>
+    <input type="number" id="target" value="1" min="0.1" step="0.1" />
+  </div>
+</div>
+
+<div class="cards" id="cards"></div>
+
+<div class="chart-wrap">
+  <h2>Units to Sell per Month at Different Price Points</h2>
+  <canvas id="barChart" height="220"></canvas>
+</div>
+
+<div class="table-wrap">
+  <h2>Breakdown Table — Units Needed to Hit Your Target</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Price (₹)</th>
+        <th>Units/Year</th>
+        <th>Units/Month</th>
+        <th>Units/Day</th>
+        <th>Revenue/Year</th>
+        <th>Profit/Year</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<script>
+  const priceInput  = document.getElementById('price');
+  const marginInput = document.getElementById('margin');
+  const targetInput = document.getElementById('target');
+
+  let barChart;
+
+  function fmt(n) {
+    if (n >= 1e7) return '₹' + (n/1e7).toFixed(2) + 'Cr';
+    if (n >= 1e5) return '₹' + (n/1e5).toFixed(1) + 'L';
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+  function fmtN(n) {
+    if (n >= 1e5) return (n/1e5).toFixed(1) + 'L';
+    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+    return Math.round(n).toLocaleString('en-IN');
+  }
+
+  function update() {
+    const price   = parseFloat(priceInput.value)  || 500;
+    const margin  = parseFloat(marginInput.value) || 30;
+    const targetCr= parseFloat(targetInput.value) || 1;
+    const targetRs= targetCr * 1e7;
+
+    const profitPerUnit = price * margin / 100;
+    const unitsYear  = Math.ceil(targetRs / profitPerUnit);
+    const unitsMonth = Math.ceil(unitsYear / 12);
+    const unitsDay   = Math.ceil(unitsYear / 365);
+    const totalRev   = unitsYear * price;
+
+    // Cards
+    document.getElementById('cards').innerHTML = `
+      <div class="card"><div class="val">${fmtN(unitsYear)}</div><div class="lbl">Units / Year</div></div>
+      <div class="card"><div class="val">${fmtN(unitsMonth)}</div><div class="lbl">Units / Month</div></div>
+      <div class="card"><div class="val">${fmtN(unitsDay)}</div><div class="lbl">Units / Day</div></div>
+      <div class="card"><div class="val">${fmt(totalRev)}</div><div class="lbl">Total Revenue</div></div>
+      <div class="card"><div class="val">₹${Math.round(profitPerUnit).toLocaleString('en-IN')}</div><div class="lbl">Profit / Unit</div></div>
+    `;
+
+    // Price points for chart & table
+    const multipliers = [0.25, 0.5, 1, 2, 5, 10, 20, 50];
+    const prices = multipliers.map(m => Math.round(price * m));
+    const labels = prices.map(p => '₹' + p.toLocaleString('en-IN'));
+    const monthlyUnits = prices.map(p => {
+      const ppu = p * margin / 100;
+      return Math.ceil(targetRs / ppu / 12);
+    });
+
+    // Chart
+    const ctx = document.getElementById('barChart').getContext('2d');
+    const bgColors = prices.map(p => p === Math.round(price) ? '#f0c040' : '#3a86ff88');
+    const borderColors = prices.map(p => p === Math.round(price) ? '#f0c040' : '#3a86ff');
+
+    if (barChart) barChart.destroy();
+    barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Units/Month needed',
+          data: monthlyUnits,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + ctx.parsed.y.toLocaleString('en-IN') + ' units/month'
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#aaa', font: { size: 11 } }, grid: { color: '#ffffff11' } },
+          y: { ticks: { color: '#aaa', font: { size: 11 },
+                callback: v => v >= 1e5 ? (v/1e5).toFixed(0)+'L' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v },
+               grid: { color: '#ffffff11' } }
+        }
+      }
+    });
+
+    // Table
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    prices.forEach((p, i) => {
+      const ppu = p * margin / 100;
+      const uy  = Math.ceil(targetRs / ppu);
+      const um  = Math.ceil(uy / 12);
+      const ud  = Math.ceil(uy / 365);
+      const rev = uy * p;
+      const prof= uy * ppu;
+      const isSelected = p === Math.round(price);
+      tbody.innerHTML += `
+        <tr class="${isSelected ? 'highlight' : ''}">
+          <td>₹${p.toLocaleString('en-IN')}${isSelected ? '<span class="badge">YOU</span>' : ''}</td>
+          <td>${fmtN(uy)}</td>
+          <td>${fmtN(um)}</td>
+          <td>${fmtN(ud)}</td>
+          <td>${fmt(rev)}</td>
+          <td>${fmt(prof)}</td>
+        </tr>`;
+    });
+  }
+
+  [priceInput, marginInput, targetInput].forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>
